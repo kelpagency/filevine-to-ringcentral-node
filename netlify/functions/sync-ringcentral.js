@@ -79,6 +79,16 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function logProgress(message, details) {
+  const timestamp = new Date().toISOString();
+  if (details === undefined) {
+    console.log(`[sync-ringcentral ${timestamp}] ${message}`);
+    return;
+  }
+
+  console.log(`[sync-ringcentral ${timestamp}] ${message}`, details);
+}
+
 async function requestWithRetry(method, url, options = {}) {
   const {
     maxRetries = 3,
@@ -215,6 +225,7 @@ async function getFilevineHeaders() {
 
   tokenCache.filevineToken = auth.access_token;
   tokenCache.filevineExpiresAt = now + 10 * 60 * 1000;
+  logProgress("Filevine access token refreshed");
 
   return {
     "x-fv-orgid": getEnv("FILEVINE_ORG_ID"),
@@ -256,6 +267,7 @@ async function getRingCentralToken() {
     throw new Error("RingCentral auth response did not include access_token");
   }
 
+  logProgress("RingCentral authentication succeeded");
   return { accessToken: auth.access_token, serverUrl };
 }
 
@@ -318,6 +330,7 @@ async function loadExtensions(auth) {
     ...parseJsonEnv("RC_EXTENSION_NAME_MAP", {}),
   };
 
+  logProgress("Loading RingCentral extensions");
   const extensionResponse = await ringCentralRequest(
     "GET",
     "/restapi/v1.0/account/~/extension",
@@ -344,6 +357,7 @@ async function loadExtensions(auth) {
     };
   }
 
+  logProgress("Loading RingCentral answering rules");
   const ruleResponse = await ringCentralRequest(
     "GET",
     "/restapi/v1.0/account/~/answering-rule",
@@ -370,6 +384,10 @@ async function loadExtensions(auth) {
       }
     }
   }
+
+  logProgress("Loaded RingCentral extension state", {
+    extensionCount: Object.keys(extensions).length,
+  });
 
   return extensions;
 }
@@ -405,8 +423,13 @@ async function processFilevineProjects(extensions) {
     process.env.FILEVINE_BASE_URL || "https://api.filevineapp.com/fv-app/v2";
 
   let nextUrl = `${filevineBaseUrl}/Projects/?sortBy=LastActivity`;
+  let pageNumber = 0;
+
+  logProgress("Starting Filevine project scan");
 
   while (nextUrl) {
+    pageNumber += 1;
+    logProgress(`Fetching Filevine projects page ${pageNumber}`);
     const headers = await getFilevineHeaders();
     const response = await requestWithRetry("GET", nextUrl, { headers });
     if (!response.ok) {
@@ -415,9 +438,22 @@ async function processFilevineProjects(extensions) {
     }
 
     const page = await response.json();
+    logProgress(`Processing Filevine projects page ${pageNumber}`, {
+      itemsOnPage: Array.isArray(page.items) ? page.items.length : 0,
+      totalProjectsSeen: stats.totalProjects,
+    });
 
     for (const caseItem of page.items || []) {
       stats.totalProjects += 1;
+      if (stats.totalProjects % 25 === 0) {
+        logProgress("Filevine scan progress", {
+          totalProjectsSeen: stats.totalProjects,
+          projectsProcessed: stats.projectsProcessed,
+          archivedPhonesFound: stats.archivedPhonesFound,
+          numbersAssigned: stats.numbersAssigned,
+        });
+      }
+
       const clientId = getClientId(caseItem);
       if (!clientId) {
         stats.projectsSkippedClientFetchFailed += 1;
@@ -502,6 +538,7 @@ async function processFilevineProjects(extensions) {
     nextUrl = nextLink ? `${filevineBaseUrl}${nextLink}` : null;
   }
 
+  logProgress("Completed Filevine project scan", stats);
   return { extensions, archivedNumbers, stats };
 }
 
@@ -527,7 +564,23 @@ async function applyRules(auth, data, dryRun) {
     rulesSkippedEmpty: 0,
   };
 
+  logProgress("Applying RingCentral answering rules", {
+    extensionCount: Object.keys(data.extensions).length,
+    dryRun,
+  });
+
+  let ruleIndex = 0;
   for (const [key, extension] of Object.entries(data.extensions)) {
+    ruleIndex += 1;
+    if (ruleIndex % 10 === 0) {
+      logProgress("RingCentral rule progress", {
+        processedRules: ruleIndex,
+        rulesCreated: stats.rulesCreated,
+        rulesUpdated: stats.rulesUpdated,
+        rulesSkippedEmpty: stats.rulesSkippedEmpty,
+      });
+    }
+
     if (extension.numbers.size === 0) {
       stats.rulesSkippedEmpty += 1;
       continue;
@@ -614,6 +667,7 @@ async function applyRules(auth, data, dryRun) {
     stats.rulesCreated += 1;
   }
 
+  logProgress("Completed RingCentral rule application", stats);
   return stats;
 }
 
@@ -621,6 +675,7 @@ exports.handler = async () => {
   const dryRun = String(process.env.RC_DRY_RUN || "false").toLowerCase() === "true";
 
   try {
+    logProgress("Run started", { dryRun });
     const auth = await getRingCentralToken();
     const extensions = await loadExtensions(auth);
     const data = await processFilevineProjects(extensions);
@@ -635,14 +690,14 @@ exports.handler = async () => {
       archivedNumberCount: data.archivedNumbers.size,
     };
 
-    console.log("sync-ringcentral complete", result);
+    logProgress("Run complete", result);
 
     return {
       statusCode: 200,
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("sync-ringcentral failed", error);
+    console.error(`[sync-ringcentral ${new Date().toISOString()}] Run failed`, error);
     return {
       statusCode: 500,
       body: JSON.stringify({ ok: false, error: error.message }),
