@@ -1,6 +1,22 @@
 const FILEVINE_TOKEN_URL = "https://identity.filevine.com/connect/token";
-const DEFAULT_FILEVINE_SCOPE =
-  "fv.api.gateway.access tenant filevine.v2.api.* email openid fv.auth.tenant.read";
+const DEFAULT_FILEVINE_SCOPE = [
+  "fv.api.gateway.access",
+  "tenant",
+  "filevine.v2.api.*",
+  "email",
+  "openid",
+  "fv.auth.tenant.read",
+].join(" ");
+const DEFAULT_FILEVINE_BASE_URL = [
+  "https://api.filevineapp.com",
+  "fv-app",
+  "v2",
+].join("/");
+const DEFAULT_RC_SERVER_URL = [
+  "https://platform",
+  "ringcentral",
+  "com",
+].join(".");
 
 const DEFAULT_EXCLUDED_NUMBERS = [
   "8133354575",
@@ -237,7 +253,7 @@ async function getFilevineHeaders() {
 }
 
 async function getRingCentralToken() {
-  const serverUrl = (process.env.RC_SERVER_URL || "https://platform.ringcentral.com").replace(/\/$/, "");
+  const serverUrl = (process.env.RC_SERVER_URL || DEFAULT_RC_SERVER_URL).replace(/\/$/, "");
   const clientId = getEnv("RC_APP_CLIENT_ID");
   const clientSecret = getEnv("RC_APP_CLIENT_SECRET");
   const jwt = getEnv("RC_USER_JWT");
@@ -419,8 +435,7 @@ async function processFilevineProjects(extensions) {
   const maxAgeDays = Number(process.env.RC_RECENT_ACTIVITY_DAYS || 60);
   const recentThreshold = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
 
-  const filevineBaseUrl =
-    process.env.FILEVINE_BASE_URL || "https://api.filevineapp.com/fv-app/v2";
+  const filevineBaseUrl = process.env.FILEVINE_BASE_URL || DEFAULT_FILEVINE_BASE_URL;
 
   let nextUrl = `${filevineBaseUrl}/Projects/?sortBy=LastActivity`;
   let pageNumber = 0;

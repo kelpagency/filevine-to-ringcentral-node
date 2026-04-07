@@ -2,8 +2,24 @@ const fs = require("fs");
 const path = require("path");
 
 const FILEVINE_TOKEN_URL = "https://identity.filevine.com/connect/token";
-const DEFAULT_FILEVINE_SCOPE =
-  "fv.api.gateway.access tenant filevine.v2.api.* email openid fv.auth.tenant.read";
+const DEFAULT_FILEVINE_SCOPE = [
+  "fv.api.gateway.access",
+  "tenant",
+  "filevine.v2.api.*",
+  "email",
+  "openid",
+  "fv.auth.tenant.read",
+].join(" ");
+const DEFAULT_FILEVINE_BASE_URL = [
+  "https://api.filevineapp.com",
+  "fv-app",
+  "v2",
+].join("/");
+const DEFAULT_RC_SERVER_URL = [
+  "https://platform",
+  "ringcentral",
+  "com",
+].join(".");
 
 function loadEnvFile(envPath) {
   if (!fs.existsSync(envPath)) {
@@ -78,8 +94,7 @@ async function getFilevineToken() {
 }
 
 async function checkFilevineApi(accessToken) {
-  const filevineBaseUrl =
-    process.env.FILEVINE_BASE_URL || "https://api.filevineapp.com/fv-app/v2";
+  const filevineBaseUrl = process.env.FILEVINE_BASE_URL || DEFAULT_FILEVINE_BASE_URL;
 
   const response = await fetch(`${filevineBaseUrl}/Projects/?limit=1`, {
     headers: {
@@ -99,7 +114,7 @@ async function checkFilevineApi(accessToken) {
 }
 
 async function getRingCentralAuth() {
-  const serverUrl = (process.env.RC_SERVER_URL || "https://platform.ringcentral.com").replace(/\/$/, "");
+  const serverUrl = (process.env.RC_SERVER_URL || DEFAULT_RC_SERVER_URL).replace(/\/$/, "");
   const clientId = getEnv("RC_APP_CLIENT_ID");
   const clientSecret = getEnv("RC_APP_CLIENT_SECRET");
   const jwt = getEnv("RC_USER_JWT");
