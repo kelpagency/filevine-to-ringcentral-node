@@ -1,0 +1,11 @@
+{
+  "name": "filevine-to-ringcentral-node",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "lint": "node --check netlify/functions/sync-ringcentral.js",
+    "local": "node run-local.js",
+    "check-auth": "node check-auth.js"
+  }
+}
