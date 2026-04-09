@@ -79,10 +79,6 @@ const tokenCache = {
   filevineExpiresAt: 0,
 };
 
-exports.config = {
-  schedule: "@daily",
-};
-
 function getEnv(name, fallback) {
   const value = process.env[name] ?? fallback;
   if (value === undefined || value === null || value === "") {
