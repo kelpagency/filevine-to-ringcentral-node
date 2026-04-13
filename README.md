@@ -30,6 +30,10 @@ Required:
 - `FILEVINE_CLIENT_SECRET`
 - `FILEVINE_PAT_TOKEN`
 
+Optional tuning:
+
+- `RC_RECENT_ACTIVITY_DAYS` - limits active-project processing to the most recent N days. The default is `2`. For an hourly job, set this much lower if you only need recent changes.
+
 ## Validate
 
 ```bash

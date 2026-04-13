@@ -408,6 +408,7 @@ async function processFilevineProjects(extensions) {
   const stats = {
     totalProjects: 0,
     projectsProcessed: 0,
+    projectsSkippedOld: 0,
     projectsSkippedNoPhone: 0,
     projectsSkippedClientFetchFailed: 0,
     archivedPhonesFound: 0,
@@ -428,7 +429,7 @@ async function processFilevineProjects(extensions) {
     parseCsvEnv("RC_EXCLUDED_NUMBERS", DEFAULT_EXCLUDED_NUMBERS),
   );
 
-  const maxAgeDays = Number(process.env.RC_RECENT_ACTIVITY_DAYS || 60);
+  const maxAgeDays = Number(process.env.RC_RECENT_ACTIVITY_DAYS || 2);
   const recentThreshold = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
 
   const filevineBaseUrl = process.env.FILEVINE_BASE_URL || DEFAULT_FILEVINE_BASE_URL;
@@ -460,6 +461,7 @@ async function processFilevineProjects(extensions) {
         logProgress("Filevine scan progress", {
           totalProjectsSeen: stats.totalProjects,
           projectsProcessed: stats.projectsProcessed,
+          projectsSkippedOld: stats.projectsSkippedOld,
           archivedPhonesFound: stats.archivedPhonesFound,
           numbersAssigned: stats.numbersAssigned,
         });
@@ -469,6 +471,15 @@ async function processFilevineProjects(extensions) {
       if (!clientId) {
         stats.projectsSkippedClientFetchFailed += 1;
         continue;
+      }
+
+      const isArchived = caseItem.phaseName === "Archived";
+      const lastActivity = new Date(caseItem.lastActivity || "").getTime();
+      if (!Number.isFinite(lastActivity) || lastActivity < recentThreshold) {
+        if (!isArchived) {
+          stats.projectsSkippedOld += 1;
+          continue;
+        }
       }
 
       let client;
@@ -496,7 +507,6 @@ async function processFilevineProjects(extensions) {
         continue;
       }
 
-      const isArchived = caseItem.phaseName === "Archived";
       if (isArchived) {
         for (const phoneEntry of phones) {
           const normalized = normalizeRingCentralPhone(phoneEntry.number);
@@ -506,11 +516,6 @@ async function processFilevineProjects(extensions) {
           archivedNumbers.add(normalized);
           stats.archivedPhonesFound += 1;
         }
-        continue;
-      }
-
-      const lastActivity = new Date(caseItem.lastActivity || "").getTime();
-      if (!Number.isFinite(lastActivity) || lastActivity < recentThreshold) {
         continue;
       }
 
