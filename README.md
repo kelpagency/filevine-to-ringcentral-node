@@ -5,7 +5,7 @@ Netlify function replacement for the archived Python `filevine-to-ringcentral` C
 ## Function
 
 - `netlify/functions/sync-ringcentral.js`
-- Scheduled with `@daily` in UTC on published deploys
+- Scheduled with `@hourly` in UTC on published deploys
 
 ## What It Does
 
