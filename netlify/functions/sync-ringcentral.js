@@ -429,7 +429,7 @@ async function processFilevineProjects(extensions) {
     parseCsvEnv("RC_EXCLUDED_NUMBERS", DEFAULT_EXCLUDED_NUMBERS),
   );
 
-  const maxAgeDays = Number(process.env.RC_RECENT_ACTIVITY_DAYS || 2);
+  const maxAgeDays = Number(process.env.RC_RECENT_ACTIVITY_DAYS || 60);
   const recentThreshold = Date.now() - maxAgeDays * 24 * 60 * 60 * 1000;
 
   const filevineBaseUrl = process.env.FILEVINE_BASE_URL || DEFAULT_FILEVINE_BASE_URL;
@@ -569,7 +569,9 @@ async function applyRules(auth, data, dryRun) {
     ]),
   );
 
-  const forceDelete = String(process.env.RC_FORCE_DELETE_EXISTING_RULES || "false").toLowerCase() === "true";
+  const forceDelete =
+    String(process.env.RC_FORCE_DELETE_EXISTING_RULES || "true").toLowerCase() ===
+    "true";
 
   const stats = {
     rulesCreated: 0,

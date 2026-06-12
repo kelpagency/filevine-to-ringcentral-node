@@ -13,7 +13,8 @@ Netlify function replacement for the archived Python `filevine-to-ringcentral` C
 - Loads extensions and existing ELM answering rules.
 - Pulls Filevine projects + client phones.
 - Applies exclusion list and primary-name mapping.
-- Removes archived case numbers and merges active numbers into answering rules.
+- Removes archived case numbers and rebuilds the ELM answering rules from the current Filevine assignments.
+- Can be switched into merge/update mode with `RC_FORCE_DELETE_EXISTING_RULES=false`, but the default mirrors the archived Cloud Function behavior.
 
 ## Environment Variables
 
@@ -32,7 +33,8 @@ Required:
 
 Optional tuning:
 
-- `RC_RECENT_ACTIVITY_DAYS` - limits active-project processing to the most recent N days. The default is `2`. For an hourly job, set this much lower if you only need recent changes.
+- `RC_RECENT_ACTIVITY_DAYS` - limits active-project processing to the most recent N days. The default is `60` to match the archived Cloud Function.
+- `RC_FORCE_DELETE_EXISTING_RULES` - defaults to `true` so existing answering rules are deleted and recreated, matching the archived Cloud Function. Set to `false` only if you intentionally want merge/update mode.
 
 ## Validate
 
